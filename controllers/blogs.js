@@ -4,6 +4,7 @@ const { Blog } = require('../models');
 const { User } = require('../models');
 const blogFinder = require('../middleware/finders');
 const { SECRET } = require('../utils/config')
+const { Op } = require('sequelize')
 
 const tokenExtractor = (req, res, next) => {
   const authorization = req.get('authorization');
@@ -11,7 +12,7 @@ const tokenExtractor = (req, res, next) => {
     const token = authorization.substring(7);
     console.log(token);
     try {
-      req.decodedToken = jwt.verify(token, 'secret');
+      req.decodedToken = jwt.verify(token, SECRET);
       next();
     } catch (error) {
       return res.status(401).json({ error: 'token invalid' });
@@ -21,21 +22,44 @@ const tokenExtractor = (req, res, next) => {
   }
 };
 
-router.get('/', async (_req, res, next) => {
+router.get('/', async (req, res, next) => {
   try {
+    const where = {};
+    if (req.query.search) {
+      const searchTerm = req.query.search.trim().toLowerCase();
+      where[Op.or] = [
+        {
+          title: {
+            [Op.iLike]: `%${searchTerm}%`
+          }
+        },
+        {
+          author: {
+            [Op.iLike]: `%${searchTerm}%`
+          }
+        }
+      ];
+    }
+    console.log(where);
     const blogs = await Blog.findAll({
       attributes: { exclude: ['userId'] },
       include: {
         model: User,
         attributes: ['name']
-      }
+      },
+      where,
+      order: [['likes', 'DESC']]
     });
+
     console.log(JSON.stringify(blogs, null, 2));
     res.json(blogs);
   } catch (error) {
     next(error);
   }
 });
+
+module.exports = router;
+
 
 router.post('/', tokenExtractor, async (req, res, next) => {
   try {
