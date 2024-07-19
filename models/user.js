@@ -23,7 +23,7 @@ User.init({
   name: {
     type: DataTypes.STRING,
     allowNull: false
-  },
+  }
 }, {
   sequelize,
   underscored: true,
