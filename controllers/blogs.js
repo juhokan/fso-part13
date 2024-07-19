@@ -5,7 +5,7 @@ const { User } = require('../models');
 const blogFinder = require('../middleware/finders');
 const { SECRET } = require('../utils/config')
 const { Op } = require('sequelize')
-const { tokenExtractor } = require('../utils/middleware')
+const { tokenExtractor, findSessionByUserId, isValidSession } = require('../utils/middleware')
 
 router.get('/', async (req, res, next) => {
   try {
@@ -46,7 +46,7 @@ router.get('/', async (req, res, next) => {
 module.exports = router;
 
 
-router.post('/', tokenExtractor, async (req, res, next) => {
+router.post('/', tokenExtractor, findSessionByUserId, isValidSession, async (req, res, next) => {
   try {
     const user = await User.findByPk(req.decodedToken.id)
     const blog = await Blog.create({...req.body, userId: user.id, date: new Date()})
@@ -62,7 +62,7 @@ router.get('/:id', blogFinder, (req, res) => {
   res.json(req.blog);
 });
 
-router.delete('/:id', tokenExtractor, blogFinder, async (req, res, next) => {
+router.delete('/:id', tokenExtractor, findSessionByUserId, isValidSession, blogFinder, async (req, res, next) => {
   try {
     if (req.blog.userId !== req.decodedToken.id) {
       const error = new Error('Invalid token');
